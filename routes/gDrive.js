@@ -2,20 +2,40 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const readline = require('readline');
+const os = require('os');
+const uuid = require('uuid');
+
 const {
   google
 } = require('googleapis');
 
 const router = express.Router();
 
-const SCOPES = ['https://www.googleapis.com/auth/drive.metadata.readonly'];
+const SCOPES = [
+  'https://www.googleapis.com/auth/drive',
+  'https://www.googleapis.com/auth/drive.appdata',
+  'https://www.googleapis.com/auth/drive.file',
+  'https://www.googleapis.com/auth/drive.metadata',
+  'https://www.googleapis.com/auth/drive.metadata.readonly',
+  'https://www.googleapis.com/auth/drive.photos.readonly',
+  'https://www.googleapis.com/auth/drive.readonly',
+];
 const TOKEN_PATH = 'token.json';
 
-router.get('/list', function (req, res, next) {
+router.get('/list-files', function (req, res, next) {
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
     if (err) return console.log('Error loading client secret file:', err);
     // Authorize a client with credentials, then call the Google Drive API.
     authorize(JSON.parse(content), res, listFiles);
+  });
+});
+
+router.get('/download-file/:id', function (req, res, next) {
+  const id = req.params.id;
+  fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
+    if (err) return console.log('Error loading client secret file:', err);
+    // Authorize a client with credentials, then call the Google Drive API.
+    // authorize(JSON.parse(content), id, downloadFile);
   });
 });
 
@@ -102,6 +122,32 @@ function uploadFile(auth) {
       console.log('File Id: ', file.id);
     }
   });
+}
+
+function downloadFile(auth, fileId) {
+  const drive = google.drive({
+    version: 'v3',
+    auth
+  });
+
+  const filePath = path.join(os.tmpdir(), uuid.v4());
+  const dest = fs.createWriteStream(filePath);
+  drive.files.get({
+      fileId: fileId,
+      alt: 'media'
+    }, {
+      responseType: 'stream'
+    },
+    function (err, res) {
+      res.data
+        .on('end', () => {
+          console.log('Done');
+        })
+        .on('error', err => {
+          console.log('Error', err);
+        })
+        .pipe(dest);
+    });
 }
 
 module.exports = router;
