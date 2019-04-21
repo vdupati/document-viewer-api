@@ -24,45 +24,69 @@ const TOKEN_PATH = 'token.json';
 
 router.get('/list-files', function (req, res, next) {
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
-    if (err) return console.log('Error loading client secret file:', err);
-    // Authorize a client with credentials, then call the Google Drive API.
-    authorize(JSON.parse(content), res, listFiles);
+    if (err) {
+      return console.log('Error loading client secret file:', err);
+    }
+
+    authorize(JSON.parse(content))
+      .then((oAuth2Client) => {
+        listFiles(oAuth2Client).then((data) => {
+          res.send(data);
+        });
+      });
   });
 });
 
 router.get('/download-file/:id', function (req, res, next) {
   const id = req.params.id;
+  console.log(id);
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
-    if (err) return console.log('Error loading client secret file:', err);
-    // Authorize a client with credentials, then call the Google Drive API.
-    // authorize(JSON.parse(content), id, downloadFile);
+    if (err) {
+      return console.log('Error loading client secret file:', err);
+    }
+
+    authorize(JSON.parse(content), id, downloadFile);
+    authorize(JSON.parse(content))
+      .then((oAuth2Client) => {
+        downloadFile(oAuth2Client, id).then((data) => {
+          res.send(data);
+        });
+      });
   });
 });
 
-function authorize(credentials, res, listFilesCallback) {
-  const {
-    client_secret,
-    client_id,
-    redirect_uris
-  } = credentials.installed;
-  const oAuth2Client = new google.auth.OAuth2(
-    client_id, client_secret, redirect_uris[0]);
+function authorize(credentials) {
+  return new Promise((resolve, reject) => {
+    const {
+      client_secret,
+      client_id,
+      redirect_uris
+    } = credentials.installed;
 
-  // Check if we have previously stored a token.
-  fs.readFile(TOKEN_PATH, (err, token) => {
-    if (err) {
-      return getAccessToken(oAuth2Client, res, listFilesCallback);
+    try {
+      const oAuth2Client = new google.auth.OAuth2(client_id, client_secret, redirect_uris[0]);
+
+      // Check if we have previously stored a token.
+      fs.readFile(TOKEN_PATH, (err, token) => {
+        if (err) {
+          return getAccessToken(oAuth2Client);
+        }
+
+        oAuth2Client.setCredentials(JSON.parse(token));
+        resolve(oAuth2Client);
+      });
+    } catch (e) {
+      reject(e);
     }
-    oAuth2Client.setCredentials(JSON.parse(token));
-    listFilesCallback(oAuth2Client, res);
   });
 }
 
-function getAccessToken(oAuth2Client, res, listFilesCallback) {
+function getAccessToken(oAuth2Client) {
   const authUrl = oAuth2Client.generateAuthUrl({
     access_type: 'offline',
     scope: SCOPES,
   });
+
   console.log('Authorize this app by visiting this url:', authUrl);
   const rl = readline.createInterface({
     input: process.stdin,
@@ -71,30 +95,44 @@ function getAccessToken(oAuth2Client, res, listFilesCallback) {
   rl.question('Enter the code from that page here: ', (code) => {
     rl.close();
     oAuth2Client.getToken(code, (err, token) => {
-      if (err) return console.error('Error retrieving access token', err);
+      if (err) {
+        return console.error('Error retrieving access token', err);
+      }
+
       oAuth2Client.setCredentials(token);
+
       // Store the token to disk for later program executions
       fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
         if (err) return console.error(err);
         console.log('Token stored to', TOKEN_PATH);
       });
 
-      listFilesCallback(oAuth2Client, res);
+      return oAuth2Client;
     });
   });
 }
 
-function listFiles(auth, response) {
-  const drive = google.drive({
-    version: 'v3',
-    auth
-  });
-  drive.files.list({
-    // pageSize: 10,
-    // fields: 'nextPageToken, files(id, name)',
-  }, (err, res) => {
-    if (err) return console.log('The API returned an error: ' + err);
-    response.send(res.data);
+function listFiles(auth) {
+  return new Promise((resolve, reject) => {
+    try {
+      const drive = google.drive({
+        version: 'v3',
+        auth
+      });
+
+      drive.files.list({
+        // pageSize: 10,
+        // fields: 'nextPageToken, files(id, name)',
+      }, (err, res) => {
+        if (err) {
+          return console.log('The API returned an error: ' + err);
+        }
+
+        resolve(res.data);
+      });
+    } catch (e) {
+      reject(e);
+    }
   });
 }
 
@@ -125,29 +163,36 @@ function uploadFile(auth) {
 }
 
 function downloadFile(auth, fileId) {
-  const drive = google.drive({
-    version: 'v3',
-    auth
-  });
+  return new Promise((resolve, reject) => {
+    try {
+      const drive = google.drive({
+        version: 'v3',
+        auth
+      });
 
-  const filePath = path.join(os.tmpdir(), uuid.v4());
-  const dest = fs.createWriteStream(filePath);
-  drive.files.get({
-      fileId: fileId,
-      alt: 'media'
-    }, {
-      responseType: 'stream'
-    },
-    function (err, res) {
-      res.data
-        .on('end', () => {
-          console.log('Done');
-        })
-        .on('error', err => {
-          console.log('Error', err);
-        })
-        .pipe(dest);
-    });
+      const filePath = path.join(os.tmpdir(), uuid.v4());
+      const dest = fs.createWriteStream(filePath);
+      drive.files.get({
+          fileId: fileId,
+          alt: 'media'
+        }, {
+          responseType: 'stream'
+        },
+        function (err, res) {
+          res.data
+            .on('end', () => {
+              resolve(res.data);
+              console.log('Done');
+            })
+            .on('error', err => {
+              console.log('Error', err);
+            })
+            .pipe(dest);
+        });
+    } catch (e) {
+      reject(e);
+    }
+  });
 }
 
 module.exports = router;
