@@ -32,7 +32,7 @@ router.get('/list-files', function (req, res) {
     authorize(JSON.parse(content))
       .then((oAuth2Client) => {
         listFiles(oAuth2Client).then((data) => {
-          res.send(data);
+          res.send(data.files);
         });
       });
   });
@@ -147,7 +147,7 @@ function listFiles(auth) {
 
       drive.files.list({
         // pageSize: 10,
-        // fields: 'nextPageToken, files(id, name)',
+        fields: 'files(id, name, mimeType, modifiedTime, size)',
       }, (err, res) => {
         if (err) {
           return console.log('The API returned an error: ' + err);
