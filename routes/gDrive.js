@@ -39,17 +39,25 @@ router.get('/list-files', function (req, res, next) {
 
 router.get('/download-file/:id', function (req, res, next) {
   const id = req.params.id;
-  console.log(id);
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
     if (err) {
       return console.log('Error loading client secret file:', err);
     }
 
-    authorize(JSON.parse(content), id, downloadFile);
     authorize(JSON.parse(content))
       .then((oAuth2Client) => {
-        downloadFile(oAuth2Client, id).then((data) => {
-          res.send(data);
+        downloadFile(oAuth2Client, id).then((result, err) => {
+          const filePath = path.join(os.tmpdir(), uuid.v4());
+          const dest = fs.createWriteStream(filePath);
+
+          result.data
+            .on('end', () => {
+              res.download(filePath);
+            })
+            .on('error', err => {
+              console.log('Error', err);
+            })
+            .pipe(dest);
         });
       });
   });
@@ -163,36 +171,22 @@ function uploadFile(auth) {
 }
 
 function downloadFile(auth, fileId) {
-  return new Promise((resolve, reject) => {
-    try {
-      const drive = google.drive({
-        version: 'v3',
-        auth
-      });
-
-      const filePath = path.join(os.tmpdir(), uuid.v4());
-      const dest = fs.createWriteStream(filePath);
-      drive.files.get({
-          fileId: fileId,
-          alt: 'media'
-        }, {
-          responseType: 'stream'
-        },
-        function (err, res) {
-          res.data
-            .on('end', () => {
-              resolve(res.data);
-              console.log('Done');
-            })
-            .on('error', err => {
-              console.log('Error', err);
-            })
-            .pipe(dest);
-        });
-    } catch (e) {
-      reject(e);
-    }
+  const drive = google.drive({
+    version: 'v3',
+    auth
   });
+
+  // https://github.com/googleapis/google-api-nodejs-client/issues/1651
+  // There is an open bug in this module which is throwing error while calling drive.files.get
+  const params = {
+    fileId: fileId,
+    // alt: 'media'
+  };
+  const options = {
+    responseType: 'stream'
+  };
+
+  return drive.files.get(params, options);
 }
 
 module.exports = router;
