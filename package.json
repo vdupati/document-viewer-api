@@ -1,9 +1,10 @@
 {
-  "name": "node-express-app",
+  "name": "document-viewer-api",
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node ./bin/www",
+    "test": "mocha --recursive --exit"
   },
   "dependencies": {
     "cookie-parser": "~1.4.3",
@@ -11,5 +12,10 @@
     "express": "~4.16.0",
     "googleapis": "^39.2.0",
     "morgan": "~1.9.0"
+  },
+  "devDependencies": {
+    "chai": "^4.2.0",
+    "mocha": "^6.1.4",
+    "supertest": "^4.0.2"
   }
 }

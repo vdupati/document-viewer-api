@@ -23,7 +23,7 @@ const SCOPES = [
 ];
 const TOKEN_PATH = 'token.json';
 
-router.get('/list-files', function (req, res, next) {
+router.get('/list-files', function (req, res) {
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
     if (err) {
       return console.log('Error loading client secret file:', err);
@@ -38,7 +38,7 @@ router.get('/list-files', function (req, res, next) {
   });
 });
 
-router.get('/download-file/:id', function (req, res, next) {
+router.get('/download-file/:id', function (req, res) {
   const id = req.params.id;
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
     if (err) {
@@ -66,7 +66,7 @@ router.get('/download-file/:id', function (req, res, next) {
   });
 });
 
-router.get('/upload-file', function (req, res, next) {
+router.get('/upload-file', function (req, res) {
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
     if (err) {
       return console.log('Error loading client secret file:', err);
@@ -75,6 +75,7 @@ router.get('/upload-file', function (req, res, next) {
     authorize(JSON.parse(content))
       .then((oAuth2Client) => {
         uploadFile(oAuth2Client);
+        res.send("upload success");
       });
   });
 });
