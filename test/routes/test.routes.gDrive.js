@@ -16,12 +16,15 @@ describe("Testing Get Files", () => {
             .catch(done);
     });
 
-    it('Should have properties "kind" and "files"', done => {
+    it('Should have properties "id" and "name"', done => {
         request(app)
             .get("/gDrive/list-Files")
             .then((res, err) => {
-                res.body.should.have.property("kind");
-                res.body.should.have.property("files");
+                var fileArray = [];
+                res.body.forEach(element => {
+                    fileArray.push(element.name);
+                });
+                fileArray.should.have.any.keys("0");
                 done();
             })
             .catch(done);
