@@ -63,6 +63,19 @@ router.get('/download-file/:id', function (req, res, next) {
   });
 });
 
+router.get('/upload-file', function (req, res, next) {
+  fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
+    if (err) {
+      return console.log('Error loading client secret file:', err);
+    }
+
+    authorize(JSON.parse(content))
+      .then((oAuth2Client) => {
+        uploadFile(oAuth2Client);
+      });
+  });
+});
+
 function authorize(credentials) {
   return new Promise((resolve, reject) => {
     const {
@@ -149,12 +162,13 @@ function uploadFile(auth) {
     version: 'v3',
     auth
   });
+
   const fileMetadata = {
     'name': 'photo.jpg'
   };
   const media = {
     mimeType: 'image/jpeg',
-    body: fs.createReadStream('files/photo.jpg')
+    body: fs.createReadStream(path.join(__dirname, '../files/photo.jpg'))
   };
   drive.files.create({
     resource: fileMetadata,
@@ -176,11 +190,9 @@ function downloadFile(auth, fileId) {
     auth
   });
 
-  // https://github.com/googleapis/google-api-nodejs-client/issues/1651
-  // There is an open bug in this module which is throwing error while calling drive.files.get
   const params = {
     fileId: fileId,
-    // alt: 'media'
+    alt: 'media'
   };
   const options = {
     responseType: 'stream'
