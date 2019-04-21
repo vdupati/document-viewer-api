@@ -14,3 +14,9 @@ In order to run the app, run the following command:
 ``` sh
 $ SET DEBUG=node-express-app:* & npm start
 ```
+
+In order to run the test cases, run the following command:
+
+``` sh
+$ npm run test
+```
