@@ -4,6 +4,7 @@ const path = require('path');
 const readline = require('readline');
 const os = require('os');
 const uuid = require('uuid');
+const mime = require('mime');
 
 const {
   google
@@ -48,16 +49,18 @@ router.get('/download-file/:id', function (req, res, next) {
       .then((oAuth2Client) => {
         downloadFile(oAuth2Client, id).then((result, err) => {
           const filePath = path.join(os.tmpdir(), uuid.v4());
-          const dest = fs.createWriteStream(filePath);
+          const destination = fs.createWriteStream(filePath);
 
           result.data
             .on('end', () => {
-              res.download(filePath);
+              const fileName = path.basename(filePath);
+              const extension = mime.extension(result.headers['content-type']);
+              res.download(filePath, fileName + '.' + extension);
             })
             .on('error', err => {
               console.log('Error', err);
             })
-            .pipe(dest);
+            .pipe(destination);
         });
       });
   });
