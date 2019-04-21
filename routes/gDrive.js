@@ -23,7 +23,8 @@ const SCOPES = [
 ];
 const TOKEN_PATH = 'token.json';
 
-router.get('/list-files', function (req, res) {
+router.get('/list-files/:id', function (req, res) {
+  const id = req.params.id;
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
     if (err) {
       return console.log('Error loading client secret file:', err);
@@ -31,7 +32,7 @@ router.get('/list-files', function (req, res) {
 
     authorize(JSON.parse(content))
       .then((oAuth2Client) => {
-        listFiles(oAuth2Client).then((data) => {
+        listFiles(oAuth2Client, id).then((data) => {
           res.send(data.files);
         });
       });
@@ -137,7 +138,7 @@ function getAccessToken(oAuth2Client) {
   });
 }
 
-function listFiles(auth) {
+function listFiles(auth, folderId) {
   return new Promise((resolve, reject) => {
     try {
       const drive = google.drive({
@@ -148,6 +149,7 @@ function listFiles(auth) {
       drive.files.list({
         // pageSize: 10,
         fields: 'files(id, name, mimeType, modifiedTime, size)',
+        q: `'${folderId}' in parents and trashed = false`
       }, (err, res) => {
         if (err) {
           return console.log('The API returned an error: ' + err);
