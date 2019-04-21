@@ -5,6 +5,10 @@ const readline = require('readline');
 const os = require('os');
 const uuid = require('uuid');
 const mime = require('mime');
+const stream = require('stream');
+let multer = require('multer');
+let upload = multer();
+
 
 const {
   google
@@ -67,7 +71,8 @@ router.get('/download-file/:id', function (req, res) {
   });
 });
 
-router.get('/upload-file', function (req, res) {
+router.post('/upload-file', upload.any(), function (req, res) {
+  let formData = req.body;
   fs.readFile(path.join(__dirname, '../credentials.json'), (err, content) => {
     if (err) {
       return console.log('Error loading client secret file:', err);
@@ -75,7 +80,7 @@ router.get('/upload-file', function (req, res) {
 
     authorize(JSON.parse(content))
       .then((oAuth2Client) => {
-        uploadFile(oAuth2Client);
+        uploadFile(oAuth2Client, req.files[0], JSON.parse(formData.metadata));
         res.send("upload success");
       });
   });
@@ -163,26 +168,22 @@ function listFiles(auth, folderId) {
   });
 }
 
-function uploadFile(auth) {
+function uploadFile(auth, fileObject, metadata) {
   const drive = google.drive({
     version: 'v3',
     auth
   });
 
-  const fileMetadata = {
-    'name': 'photo.jpg'
-  };
-  const media = {
-    mimeType: 'image/jpeg',
-    body: fs.createReadStream(path.join(__dirname, '../files/photo.jpg'))
-  };
+  let bufferStream = new stream.PassThrough();
+  bufferStream.end(fileObject.buffer);
   drive.files.create({
-    resource: fileMetadata,
-    media: media,
-    fields: 'id'
+    requestBody: metadata,
+    media: {
+      mimeType: fileObject.mimetype,
+      body: bufferStream,
+    },
   }, (err, file) => {
     if (err) {
-      // Handle error
       console.error(err);
     } else {
       console.log('File Id: ', file.id);
