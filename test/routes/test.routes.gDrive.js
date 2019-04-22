@@ -8,7 +8,7 @@ const app = require("../../app");
 describe("Testing Get Files", () => {
     it("sending request to server", done => {
         request(app)
-            .get("/gDrive/list-Files")
+            .get("/gDrive/list-files/root")
             .then((res, err) => {
                 expect(res.statusCode).to.equal(200);
                 done();
@@ -16,9 +16,9 @@ describe("Testing Get Files", () => {
             .catch(done);
     });
 
-    it('Should have properties "id" and "name"', done => {
+    it('Should have at least one file', done => {
         request(app)
-            .get("/gDrive/list-Files")
+            .get("/gDrive/list-files/root")
             .then((res, err) => {
                 var fileArray = [];
                 res.body.forEach(element => {

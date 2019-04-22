@@ -9,7 +9,6 @@ const stream = require('stream');
 let multer = require('multer');
 let upload = multer();
 
-
 const {
   google
 } = require('googleapis');
@@ -186,7 +185,7 @@ function uploadFile(auth, fileObject, metadata) {
     if (err) {
       console.error(err);
     } else {
-      console.log('File Id: ', file.id);
+      // console.log('File Id: ', file.id);
     }
   });
 }
